@@ -53,6 +53,14 @@ def main(argv: list[str] | None = None) -> int:
         print("use --file or --plan, not both", file=sys.stderr)
         return 2
     if args.file:
+        if not args.file.exists():
+            print(f"missing {args.file}", file=sys.stderr)
+            print(
+                "This CLI reads one plan JSON. To score the eval set run: "
+                "uv run python -m raggeoni.hydrate eval/v1.jsonl",
+                file=sys.stderr,
+            )
+            return 2
         raw = args.file.read_text(encoding="utf-8")
     elif args.plan:
         raw = args.plan
