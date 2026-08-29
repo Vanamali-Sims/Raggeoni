@@ -1,0 +1,405 @@
+{
+  "table": "price_demand",
+  "regions": [
+    "NSW1",
+    "QLD1",
+    "VIC1",
+    "SA1",
+    "TAS1"
+  ],
+  "window": {
+    "start_month": "2025-08",
+    "end_month": "2026-07",
+    "min_settlement_ts": "2025-08-01 00:05:00",
+    "max_settlement_ts": "2026-08-01 00:00:00"
+  },
+  "row_count": 525600,
+  "negative_rrp_rows": 92838,
+  "rrp_min": -1000.0,
+  "rrp_max": 23200.0,
+  "timezone": "NEM time is AEST (UTC+10) year-round; no daylight saving.",
+  "grain": "5-minute settlement intervals; SETTLEMENTDATE is interval-ending.",
+  "source_page": "https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/aggregated-data",
+  "duckdb_path": "data/nem.duckdb",
+  "duckdb_sha256": "a0e2fcbd6cf98e5678a699c95f3eab6bca8b901b8c90e8f1c22325ce3323ee79",
+  "duckdb_bytes": 36712448,
+  "canonical_sha256": "10ccef43a032a709fb54d8bb1371f645c1e16dc88f365136ea921f838529e77c",
+  "sources_sha256": "4371af03f54e1ee2ea864089e7b92609d09925d8ccc179d2b7bc30a9d6b86382",
+  "source_files": [
+    {
+      "name": "PRICE_AND_DEMAND_202508_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202508_NSW1.csv",
+      "bytes": 413388,
+      "sha256": "7c5309b9cc14c4835f30e694c4599ec16be395e2cc69e1415358e375b2d64051"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202508_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202508_QLD1.csv",
+      "bytes": 412842,
+      "sha256": "5870c707c25090c43e969fad71275806ec3ef5bfea680ca150fe906d4d49daab"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202508_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202508_VIC1.csv",
+      "bytes": 409642,
+      "sha256": "7a6e05a073564d941b72a04593ea3f6376200b974cf85427b7fa4b54877aaeb8"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202508_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202508_SA1.csv",
+      "bytes": 399977,
+      "sha256": "654f6215b1227f13c76cb7f888e248bb7082ab41e2a735ab64de827659a9700a"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202508_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202508_TAS1.csv",
+      "bytes": 414058,
+      "sha256": "2281d2582afab5d22dcf7bdf8c655fb2e3c1a565c0f3ceb0a674a358205ee30e"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202509_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202509_NSW1.csv",
+      "bytes": 398558,
+      "sha256": "2216c9a6d76c16c76d3af1b459cef3b4d1e64a2ff79d8a4caabe156056f318b2"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202509_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202509_QLD1.csv",
+      "bytes": 399304,
+      "sha256": "8e8d3d49092593d7498e7a57a3a8eb77257057d3103a434cf0428372570606b7"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202509_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202509_VIC1.csv",
+      "bytes": 394725,
+      "sha256": "955f5077ef1f864768177604fc3187b8fc267fef7e3bd71ba33d623760a643cf"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202509_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202509_SA1.csv",
+      "bytes": 385462,
+      "sha256": "f5bf4c96bd869e34bb1bb056edf0c4288bcdb5ab79f765b8cfbc12fea7ae383b"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202509_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202509_TAS1.csv",
+      "bytes": 390391,
+      "sha256": "11a735bd86d7ae6255f2f65a0b871359976a5941ce6a9c61430de220443f8ff1"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202510_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202510_NSW1.csv",
+      "bytes": 412723,
+      "sha256": "d0b438c469bff79b8a93d23c0ce87335f2b73159bebf41acfb7e722202e19303"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202510_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202510_QLD1.csv",
+      "bytes": 412116,
+      "sha256": "87622bf84a7993660bab5275d982e567eebef34224578d0c01cf04f58cf59f7b"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202510_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202510_VIC1.csv",
+      "bytes": 410012,
+      "sha256": "a15d7ba555eade7a0f776fdc90a57a6a058b5656ebd17b830101fb454a68f778"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202510_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202510_SA1.csv",
+      "bytes": 398541,
+      "sha256": "39982a7c1311b2abdc30af1a685672865ab6faf08fceb2ce3fe95fa65773fcce"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202510_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202510_TAS1.csv",
+      "bytes": 401256,
+      "sha256": "c4b8db059795651b47babb81ee530373e5f7798fdaa7bd2a9d02ee40fb10c28c"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202511_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202511_NSW1.csv",
+      "bytes": 398127,
+      "sha256": "11ce9a97a9ec6748eabe9fe436e4f90245a3da1fd39fb445261a824bbbf20572"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202511_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202511_QLD1.csv",
+      "bytes": 398213,
+      "sha256": "8bf7a55dbfd5e626536ebe0434970b4a1f3788dc0448d4b033275a45cb3ff909"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202511_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202511_VIC1.csv",
+      "bytes": 396786,
+      "sha256": "fb3455870b61728066fe76701f4799ddf8a751fcfbd9a791815c49dba70ad846"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202511_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202511_SA1.csv",
+      "bytes": 385384,
+      "sha256": "304233c73ef63fda203f8c17725b7c72c141911598831322653c1753f1cb7b9b"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202511_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202511_TAS1.csv",
+      "bytes": 388841,
+      "sha256": "bd3ed6259a5b61348a6409e4171d5b1e2303324f1ce9d22b12f6e7df08d16767"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202512_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202512_NSW1.csv",
+      "bytes": 410417,
+      "sha256": "d6c5968d4dda350edccc928c52b2dadc55a1df4aebfeb73cee7fa989a288565b"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202512_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202512_QLD1.csv",
+      "bytes": 409903,
+      "sha256": "bdae26a9a703708b3ab782cf1c9698674af5b1cf731440befa5994f698212362"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202512_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202512_VIC1.csv",
+      "bytes": 408271,
+      "sha256": "b017050c38eeac4ea03d20510449b7ca905a52496081af39d82f0f0181017f2a"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202512_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202512_SA1.csv",
+      "bytes": 397769,
+      "sha256": "d050a82385d9c96e7b9f64c9591c616b80f520947488677fd7e309195835d8f5"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202512_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202512_TAS1.csv",
+      "bytes": 403054,
+      "sha256": "7daf5d457d4519090743e311e6c8aa82f08a3c41085a164eb25b9012a1e78667"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202601_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202601_NSW1.csv",
+      "bytes": 409049,
+      "sha256": "e925ec937ca6de5e79887519cfdb226c06917497ce8fd49062a8359b41924094"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202601_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202601_QLD1.csv",
+      "bytes": 407740,
+      "sha256": "a6ac8121aae0000255cb86fb5434de91dfbdbf197651d3b04e53e223ffc21eee"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202601_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202601_VIC1.csv",
+      "bytes": 408571,
+      "sha256": "29fef7e499d81f7fb4901aa36a7d17924ce15e4a24998a0b9143cffeee7b9387"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202601_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202601_SA1.csv",
+      "bytes": 398027,
+      "sha256": "fb05f242250a9b1d0489ff698e74762509e7f954ea0ab1b59529e61ccd2bf97b"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202601_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202601_TAS1.csv",
+      "bytes": 407921,
+      "sha256": "fd1e7a6438caa282e4d7a43e3c546cc33520744c4d74ed41c7a0a6fe2dae93c0"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202602_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202602_NSW1.csv",
+      "bytes": 371072,
+      "sha256": "5ca85cec2a1fd6543f823268648639a873814b7254b2ecd8e94ce27b6b95dffb"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202602_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202602_QLD1.csv",
+      "bytes": 369651,
+      "sha256": "66214921c7dd74094047225af6b425713bc5748b383fb30f2c85a0caf87fd6b3"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202602_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202602_VIC1.csv",
+      "bytes": 369387,
+      "sha256": "30d2d46f4e35b9fd8d53ffe76d1ad06fee4435cf27a6cf490de26a26fcaedc62"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202602_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202602_SA1.csv",
+      "bytes": 359068,
+      "sha256": "1a69f4246d34b88b4d04cc5830deee5870847b999a38b4887fc15dd16429519f"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202602_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202602_TAS1.csv",
+      "bytes": 364353,
+      "sha256": "7dee47a45ece9e6776b7173ffa7d0214f922393c25dc3aa976636b3d45d1ab09"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202603_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202603_NSW1.csv",
+      "bytes": 409084,
+      "sha256": "afd51413c510e8a3a5f4401d6c1fbaa769cfdf8a85bd3f1ab403cd9d3e6f058f"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202603_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202603_QLD1.csv",
+      "bytes": 408945,
+      "sha256": "67d9fc3f83def6ffc21aa7b9ae24a8f296bd598c0f1d4218ce5f8299d73987dd"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202603_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202603_VIC1.csv",
+      "bytes": 409014,
+      "sha256": "1b42b6874d1634e65ea57aeabc5022b62ef93c84287a95d4157b6f5e4301a84a"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202603_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202603_SA1.csv",
+      "bytes": 397868,
+      "sha256": "2305685004793a3015dfbf3e670305609a4191c400a8d2783d35cbb82b0b7ac5"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202603_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202603_TAS1.csv",
+      "bytes": 404687,
+      "sha256": "7bf2e33078801fd1bc60a134711cd9a7f42ccebe5641b7699456ba422c79e8d2"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202604_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202604_NSW1.csv",
+      "bytes": 395254,
+      "sha256": "17a7ebf9c322f2df3e55f6b743bc4829efa30fb891f3dc84a1965f038f9b2f94"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202604_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202604_QLD1.csv",
+      "bytes": 394601,
+      "sha256": "1a7de6b8174176e8a903bb6a39f8586a09294d691fd9704d6f18b93a41780713"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202604_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202604_VIC1.csv",
+      "bytes": 394905,
+      "sha256": "92309966ddade1da2a20f934b3fa021f54ab5a438438ab8ecb1ca0b744936402"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202604_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202604_SA1.csv",
+      "bytes": 384004,
+      "sha256": "206e7dbaf2517662a794524a2786287fcea561495488a2de0f78b117f43e9eff"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202604_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202604_TAS1.csv",
+      "bytes": 392983,
+      "sha256": "21e38ce9c254a78fccad15f5456e5d5843aa6a949ad59141077145347de02d17"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202605_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202605_NSW1.csv",
+      "bytes": 410239,
+      "sha256": "7bb653e074dd7d5f7dd1153d75bb3aa790c6890afc54e0c23773da120b4df0d0"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202605_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202605_QLD1.csv",
+      "bytes": 410105,
+      "sha256": "bde9ce3224a86b6a7ca2dc229eb4199b3256d8d3094e63f411271ee672f3212d"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202605_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202605_VIC1.csv",
+      "bytes": 409131,
+      "sha256": "6d3d37a983c6d07059fab4e83316cbacb11204a7bdf7af298ffa73c07a2998f7"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202605_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202605_SA1.csv",
+      "bytes": 400303,
+      "sha256": "316bfb7d67d208befcad9bc8c3b35f97d361b266b0609c2ee27a7f8f5477555a"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202605_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202605_TAS1.csv",
+      "bytes": 409515,
+      "sha256": "d61b8ac497cd0dfc5f2658c317fe22386b98da9d1dcc215835980ef86c8bbdd7"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202606_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202606_NSW1.csv",
+      "bytes": 396677,
+      "sha256": "edcaaccc1871395f860ff4a1e0d6ae4db43302f6749d41a1e46f3ad30fc899e5"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202606_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202606_QLD1.csv",
+      "bytes": 396313,
+      "sha256": "007f61cb9781a28ec40ff422e1faa4679cddfee9fc8f84b169fe2447a1d21851"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202606_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202606_VIC1.csv",
+      "bytes": 396921,
+      "sha256": "7eb9a2d27718e87b582918321c3c0ec76bc4e720d83720efede650d0c10644b2"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202606_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202606_SA1.csv",
+      "bytes": 386797,
+      "sha256": "bbf392b380e498bc135b3ab7684af4508aca3fdc555cadcf30065096b1b7efd8"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202606_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202606_TAS1.csv",
+      "bytes": 395038,
+      "sha256": "8aaf27860c4b06cc65fa31dd9c1b2c5bc5b74b5cfaf37beff814909996ac2cff"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202607_NSW1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202607_NSW1.csv",
+      "bytes": 411288,
+      "sha256": "562dfb1d4b89f752f969b106b74a7b876cdd8ed2b670d305145c4aa8e967df30"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202607_QLD1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202607_QLD1.csv",
+      "bytes": 409595,
+      "sha256": "56d5f951439b87c283b22cabcfa98dc59a68e374253aec2e80003c0af77c36ad"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202607_VIC1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202607_VIC1.csv",
+      "bytes": 409860,
+      "sha256": "06813047d73401243cb1e7b25f4df952eb22b56a7ec63047845efba4a38e42b0"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202607_SA1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202607_SA1.csv",
+      "bytes": 401176,
+      "sha256": "9fcb98786df2a3b903e624149872a9eec4b9bd909f4ef4176ff199aba5730f00"
+    },
+    {
+      "name": "PRICE_AND_DEMAND_202607_TAS1.csv",
+      "url": "https://aemo.com.au/aemo/data/nem/priceanddemand/PRICE_AND_DEMAND_202607_TAS1.csv",
+      "bytes": 409233,
+      "sha256": "406027aa7949a2f4e9db4bb13980faf9768dd71e286e9bcd97ea350aa087b38b"
+    }
+  ],
+  "meta": {
+    "built_on": "2026-08-29",
+    "date_end": "2026-08-01 00:00:00",
+    "date_start": "2025-08-01 00:05:00",
+    "grain": "5-minute settlement intervals; SETTLEMENTDATE is interval-ending.",
+    "interval_minutes": "5",
+    "regions": "NSW1,QLD1,VIC1,SA1,TAS1",
+    "row_count": "525600",
+    "source_base": "https://aemo.com.au/aemo/data/nem/priceanddemand",
+    "source_page": "https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/aggregated-data",
+    "sources_sha256": "4371af03f54e1ee2ea864089e7b92609d09925d8ccc179d2b7bc30a9d6b86382",
+    "timezone": "NEM time is AEST (UTC+10) year-round; no daylight saving.",
+    "window_end_month": "2026-07",
+    "window_start_month": "2025-08"
+  }
+}

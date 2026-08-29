@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Frozen locally; rebuild with `uv run python -m raggeoni.ingest`
+data/raw/
+data/nem.duckdb
+data/nem.duckdb.wal
+data/_canonical.csv
