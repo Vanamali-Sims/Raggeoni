@@ -8,6 +8,9 @@ build/
 .pytest_cache/
 .ruff_cache/
 key.md
+.env
+eval/runs/
+
 # Frozen locally; rebuild with `uv run python -m raggeoni.ingest`
 data/raw/
 data/nem.duckdb
