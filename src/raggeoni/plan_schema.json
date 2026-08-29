@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "raggeoni://plan_schema.json",
+  "title": "Raggeoni query plan",
+  "description": "Tiny DSL over price_demand. The compiler is the only path to SQL.",
+  "oneOf": [
+    { "$ref": "#/$defs/refuse" },
+    { "$ref": "#/$defs/lookup" },
+    { "$ref": "#/$defs/aggregate" },
+    { "$ref": "#/$defs/compare" }
+  ],
+  "$defs": {
+    "intentRefuse": { "const": "refuse" },
+    "intentLookup": { "const": "lookup" },
+    "intentAggregate": { "const": "aggregate" },
+    "intentCompare": { "const": "compare" },
+    "table": { "const": "price_demand" },
+    "column": {
+      "type": "string",
+      "enum": ["settlement_ts", "region", "rrp", "total_demand", "period_type"]
+    },
+    "op": { "type": "string", "enum": ["=", "!=", ">", ">=", "<", "<=", "in"] },
+    "fn": { "type": "string", "enum": ["max", "min", "avg", "sum", "count"] },
+    "alias": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,31}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
+    },
+    "region": {
+      "type": "string",
+      "enum": ["NSW1", "QLD1", "VIC1", "SA1", "TAS1"]
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["col", "op", "val"],
+      "properties": {
+        "col": { "$ref": "#/$defs/column" },
+        "op": { "$ref": "#/$defs/op" },
+        "val": true
+      }
+    },
+    "orderBy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["col"],
+      "properties": {
+        "col": { "type": "string" },
+        "dir": { "type": "string", "enum": ["asc", "desc"] }
+      }
+    },
+    "selectAgg": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fn"],
+      "properties": {
+        "fn": { "$ref": "#/$defs/fn" },
+        "col": { "$ref": "#/$defs/column" },
+        "as": { "$ref": "#/$defs/alias" }
+      }
+    },
+    "refuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent"],
+      "properties": {
+        "intent": { "$ref": "#/$defs/intentRefuse" },
+        "reason": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "lookup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "filters", "limit"],
+      "properties": {
+        "intent": { "$ref": "#/$defs/intentLookup" },
+        "table": { "$ref": "#/$defs/table" },
+        "filters": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/filter" }
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/column" },
+          "uniqueItems": true
+        },
+        "order_by": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/orderBy" }
+        },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "select"],
+      "properties": {
+        "intent": { "$ref": "#/$defs/intentAggregate" },
+        "table": { "$ref": "#/$defs/table" },
+        "filters": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/filter" }
+        },
+        "select": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/selectAgg" }
+        },
+        "group_by": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/column" },
+          "uniqueItems": true
+        },
+        "order_by": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/orderBy" }
+        },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 1000 }
+      }
+    },
+    "compareSide": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "filters"],
+      "properties": {
+        "name": { "$ref": "#/$defs/alias" },
+        "filters": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/filter" }
+        }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "metric", "sides"],
+      "properties": {
+        "intent": { "$ref": "#/$defs/intentCompare" },
+        "table": { "$ref": "#/$defs/table" },
+        "metric": { "$ref": "#/$defs/selectAgg" },
+        "sides": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/compareSide" }
+        }
+      }
+    }
+  }
+}
