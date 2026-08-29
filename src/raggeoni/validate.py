@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from copy import deepcopy
 from typing import Any
 
 from raggeoni.constants import REGIONS
@@ -28,6 +27,43 @@ MAX_FILTERS = 16
 ALIAS_RE = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
 PERIOD_TYPES = frozenset({"TRADE"})
+RESERVED = frozenset(
+    {
+        "all",
+        "and",
+        "as",
+        "by",
+        "cast",
+        "count",
+        "distinct",
+        "else",
+        "end",
+        "false",
+        "from",
+        "group",
+        "in",
+        "inner",
+        "is",
+        "join",
+        "left",
+        "limit",
+        "not",
+        "null",
+        "on",
+        "or",
+        "order",
+        "outer",
+        "price_demand",
+        "right",
+        "select",
+        "side",
+        "then",
+        "true",
+        "union",
+        "when",
+        "where",
+    }
+)
 
 
 class InvalidPlan(Exception):
@@ -150,8 +186,7 @@ def _validate_compare(plan: dict) -> dict[str, Any]:
         if extra:
             raise InvalidPlan(f"sides[{i}] unknown fields: {sorted(extra)}")
         name = side.get("name")
-        if not isinstance(name, str) or not ALIAS_RE.match(name):
-            raise InvalidPlan(f"sides[{i}].name must match {ALIAS_RE.pattern}")
+        _require_alias(name, f"sides[{i}].name")
         if name in names:
             raise InvalidPlan("side names must be unique")
         names.append(name)
@@ -191,8 +226,7 @@ def _validate_select_item(raw: Any, default_as: str | None) -> dict[str, Any]:
         if col not in NUMERIC_COLS:
             raise InvalidPlan(f"{fn} is only allowed on {sorted(NUMERIC_COLS)}")
     alias = raw.get("as") or default_as or _default_alias(fn, col)
-    if not isinstance(alias, str) or not ALIAS_RE.match(alias):
-        raise InvalidPlan(f"alias must match {ALIAS_RE.pattern}")
+    _require_alias(alias, "alias")
     out: dict[str, Any] = {"fn": fn, "as": alias}
     if col is not None:
         out["col"] = col
@@ -268,6 +302,13 @@ def _parse_value(col: str, val: Any, prefix: str) -> Any:
     raise InvalidPlan(f"{prefix}: unsupported column")
 
 
+def _require_alias(name: Any, label: str) -> None:
+    if not isinstance(name, str) or not ALIAS_RE.match(name):
+        raise InvalidPlan(f"{label} must match {ALIAS_RE.pattern}")
+    if name in RESERVED:
+        raise InvalidPlan(f"{label} {name!r} is reserved")
+
+
 def _require_column(col: Any) -> None:
     if col not in COLUMNS:
         raise InvalidPlan(f"column must be one of {list(COLUMNS)}")
@@ -307,7 +348,3 @@ def _validate_order_by(raw: Any, *, allowed: set[str]) -> list[dict[str, str]]:
             raise InvalidPlan(f"order_by[{i}].dir must be asc or desc")
         out.append({"col": col, "dir": direction})
     return out
-
-
-def clone_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    return deepcopy(plan)

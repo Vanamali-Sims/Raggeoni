@@ -9,6 +9,8 @@ dependencies = [
 
 [project.scripts]
 raggeoni-ingest = "raggeoni.ingest:main"
+raggeoni-plan = "raggeoni.plan:main"
+raggeoni-hydrate = "raggeoni.hydrate:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -18,4 +20,4 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-raggeoni = ["schema.sql"]
+raggeoni = ["schema.sql", "plan_schema.json"]
