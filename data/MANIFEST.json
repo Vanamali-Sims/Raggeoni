@@ -21,7 +21,7 @@
   "grain": "5-minute settlement intervals; SETTLEMENTDATE is interval-ending.",
   "source_page": "https://www.aemo.com.au/energy-systems/electricity/national-electricity-market-nem/data-nem/aggregated-data",
   "duckdb_path": "data/nem.duckdb",
-  "duckdb_sha256": "a0e2fcbd6cf98e5678a699c95f3eab6bca8b901b8c90e8f1c22325ce3323ee79",
+  "duckdb_sha256": "f1470023cd203c887e696e9be9074d1a49ec34b820afa8ffb1c568ee493a6c93",
   "duckdb_bytes": 36712448,
   "canonical_sha256": "10ccef43a032a709fb54d8bb1371f645c1e16dc88f365136ea921f838529e77c",
   "sources_sha256": "4371af03f54e1ee2ea864089e7b92609d09925d8ccc179d2b7bc30a9d6b86382",
