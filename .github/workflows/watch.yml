@@ -28,9 +28,9 @@ jobs:
       new: ${{ steps.commit.outputs.new }}
     env:
       OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
-      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'openrouter' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'anthropic/claude-sonnet-5' }}
       SPIKE_THRESHOLD: ${{ vars.SPIKE_THRESHOLD || '300' }}
     steps:
       - uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
       - name: Refresh, detect, investigate
         run: |
           BRAIN=rules
-          [ -n "$ANTHROPIC_API_KEY" ] && BRAIN=llm
+          [ -n "$OPENROUTER_API_KEY" ] && BRAIN=llm
           raggeoni-spike watch --brain "$BRAIN"
 
       - name: Save live window

@@ -157,7 +157,7 @@ uv run pytest
 
 ### Real data
 
-Copy `.env.example` to `.env` and fill in what you have. NEMWeb needs no key; generation data needs a free [Open Electricity](https://platform.openelectricity.org.au/) key; the LLM team needs an Anthropic (or OpenAI-compatible) key.
+Copy `.env.example` to `.env` and fill in what you have. NEMWeb needs no key; generation data needs a free [Open Electricity](https://platform.openelectricity.org.au/) key; the LLM team needs an [OpenRouter](https://openrouter.ai/settings/keys) key. OpenRouter lets you swap models with one setting (`SPIKE_MODEL`, default `anthropic/claude-sonnet-5`) and reports the real cost of every call, so the exam's cost column is exact rather than estimated. Direct Anthropic and OpenAI-compatible keys still work via `SPIKE_LLM_PROVIDER`.
 
 ```bash
 # Build data for one exam event, then run both arms
@@ -175,7 +175,7 @@ uv run raggeoni-spike watch --brain llm
 
 ### Turning on the Actions
 
-1. Repo **Settings → Secrets and variables → Actions**: add `ANTHROPIC_API_KEY` and `OPENELECTRICITY_API_KEY` as secrets. Optional variables: `SPIKE_MODEL`, `SPIKE_THRESHOLD`, `SPIKE_PRICE_IN_PER_MTOK`, `SPIKE_PRICE_OUT_PER_MTOK`.
+1. Repo **Settings → Secrets and variables → Actions**: add `OPENROUTER_API_KEY` and `OPENELECTRICITY_API_KEY` as secrets. Optional variables: `SPIKE_MODEL` (an OpenRouter slug), `SPIKE_THRESHOLD`. Consider a credit limit on the OpenRouter key, since `watch` runs unattended.
 2. **Settings → Pages → Source: GitHub Actions.**
 3. Run `eval` once by hand, then save its scorecard to `eval/spikes/baselines/llm-eval.json` so future PRs are compared against it.
 4. `watch` runs every 10 minutes, which uses Actions minutes. Pause it from the Actions tab when you don't need it.
@@ -190,6 +190,7 @@ Short records in [`docs/adr/`](docs/adr/):
 2. [A deterministic verifier instead of an LLM judge](docs/adr/0002-deterministic-verifier.md)
 3. [Rules as the baseline arm](docs/adr/0003-rules-baseline.md)
 4. [Frozen exam, live product](docs/adr/0004-frozen-exam-live-product.md)
+5. [OpenRouter as the default model provider](docs/adr/0005-openrouter.md)
 
 ## The original Raggeoni harness
 

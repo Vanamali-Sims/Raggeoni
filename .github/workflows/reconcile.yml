@@ -24,9 +24,9 @@ jobs:
     env:
       IN_REPORT_URL: ${{ inputs.report_url }}
       IN_USE_LLM: ${{ inputs.use_llm }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
-      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'openrouter' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'anthropic/claude-sonnet-5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -36,7 +36,7 @@ jobs:
       - name: Compare live investigations with the report
         run: |
           LLM=""
-          [ "$IN_USE_LLM" = "true" ] && [ -n "$ANTHROPIC_API_KEY" ] && LLM="--llm"
+          [ "$IN_USE_LLM" = "true" ] && [ -n "$OPENROUTER_API_KEY" ] && LLM="--llm"
           case "$IN_REPORT_URL" in https://www.aer.gov.au/*) ;; *) echo "Only aer.gov.au reports are accepted"; exit 1;; esac
           raggeoni-spike reconcile --report-url "$IN_REPORT_URL" $LLM --pr-body pr.md
       - name: Open a PR with proposed exam rows

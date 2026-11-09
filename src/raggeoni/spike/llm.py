@@ -2,14 +2,17 @@
 
 Providers (``SPIKE_LLM_PROVIDER``):
 
-* ``anthropic`` (default): Claude Messages API, key in ``ANTHROPIC_API_KEY``.
+* ``openrouter`` (default): one key (``OPENROUTER_API_KEY``) for models from
+  many labs. ``SPIKE_MODEL`` takes an OpenRouter slug, default
+  ``anthropic/claude-sonnet-5``. OpenRouter reports the real cost of every
+  call, so cost tracking needs no price table.
+* ``anthropic``: Claude Messages API direct, key in ``ANTHROPIC_API_KEY``.
 * ``openai``: any OpenAI-compatible chat completions API, key in
   ``OPENAI_API_KEY``; set ``SPIKE_LLM_BASE_URL`` for Groq or others
   (e.g. https://api.groq.com/openai/v1 with ``GROQ_API_KEY``).
 
-Model via ``SPIKE_MODEL``. Cost is only reported when prices are configured
-(``SPIKE_PRICE_IN_PER_MTOK`` / ``SPIKE_PRICE_OUT_PER_MTOK``), because
-hard-coded prices go stale.
+For providers that don't report cost, set ``SPIKE_PRICE_IN_PER_MTOK`` and
+``SPIKE_PRICE_OUT_PER_MTOK`` (USD per million tokens) to get an estimate.
 """
 
 from __future__ import annotations
@@ -42,6 +45,7 @@ class Reply:
     input_tokens: int = 0
     output_tokens: int = 0
     raw_assistant: Any = None  # provider-native assistant message, replayed in the next turn
+    cost_usd: float | None = None  # set when the provider reports it (OpenRouter does)
 
 
 @dataclass
@@ -51,6 +55,8 @@ class Usage:
     output_tokens: int = 0
     seconds: float = 0.0
     failures: int = 0
+    reported_cost: float = 0.0
+    reported_calls: int = 0
     by_role: dict[str, dict[str, float]] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
@@ -73,12 +79,20 @@ class Usage:
             self.output_tokens += reply.output_tokens
             bucket["input_tokens"] += reply.input_tokens
             bucket["output_tokens"] += reply.output_tokens
+            if reply.cost_usd is not None:
+                self.reported_cost += reply.cost_usd
+                self.reported_calls += 1
 
     @property
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
 
     def cost_usd(self) -> float | None:
+        """Provider-reported cost when every successful call reported one;
+        otherwise an estimate from configured prices; otherwise unknown."""
+        successful = self.calls - self.failures
+        if self.reported_calls and self.reported_calls == successful:
+            return round(self.reported_cost, 6)
         pin = os.environ.get("SPIKE_PRICE_IN_PER_MTOK")
         pout = os.environ.get("SPIKE_PRICE_OUT_PER_MTOK")
         if not pin or not pout:
@@ -86,6 +100,14 @@ class Usage:
         return round(
             self.input_tokens / 1e6 * float(pin) + self.output_tokens / 1e6 * float(pout), 5
         )
+
+    def cost_source(self) -> str:
+        successful = self.calls - self.failures
+        if self.reported_calls and self.reported_calls == successful:
+            return "provider"
+        if os.environ.get("SPIKE_PRICE_IN_PER_MTOK") and os.environ.get("SPIKE_PRICE_OUT_PER_MTOK"):
+            return "estimate"
+        return "unknown"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -95,6 +117,7 @@ class Usage:
             "seconds": round(self.seconds, 2),
             "failures": self.failures,
             "cost_usd": self.cost_usd(),
+            "cost_source": self.cost_source(),
             "by_role": self.by_role,
         }
 
@@ -131,7 +154,12 @@ def _post(
                 last = LLMError(f"HTTP {exc.code}: {detail}")
                 time.sleep(2 * 2**attempt)
                 continue
-            raise LLMError(f"HTTP {exc.code}: {detail}") from exc
+            hint = {
+                401: " (check the API key)",
+                402: " (out of credits: top up at openrouter.ai/settings/credits)",
+                404: " (model slug not found: check SPIKE_MODEL)",
+            }.get(exc.code, "")
+            raise LLMError(f"HTTP {exc.code}{hint}: {detail}") from exc
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             last = exc
             if attempt < retries - 1:
@@ -197,15 +225,25 @@ class AnthropicChat:
 
 
 class OpenAICompatChat:
-    def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
-        self.name = model or os.environ.get("SPIKE_MODEL", "gpt-4o-mini")
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY") or os.environ.get("GROQ_API_KEY")
-        if not self.api_key:
-            raise LLMError("OPENAI_API_KEY (or GROQ_API_KEY) is not set")
-        self.url = (
-            os.environ.get("SPIKE_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-            + "/chat/completions"
+    def __init__(
+        self,
+        model: str | None = None,
+        api_key: str | None = None,
+        *,
+        base_url: str | None = None,
+        extra_headers: dict[str, str] | None = None,
+        key_names: tuple[str, ...] = ("OPENAI_API_KEY", "GROQ_API_KEY"),
+        default_model: str = "gpt-4o-mini",
+    ) -> None:
+        self.name = model or os.environ.get("SPIKE_MODEL", default_model)
+        self.api_key = api_key or next(
+            (os.environ[k] for k in key_names if os.environ.get(k)), None
         )
+        if not self.api_key:
+            raise LLMError(f"{' or '.join(key_names)} is not set")
+        base = base_url or os.environ.get("SPIKE_LLM_BASE_URL", "https://api.openai.com/v1")
+        self.url = base.rstrip("/") + "/chat/completions"
+        self.extra_headers = extra_headers or {}
 
     def chat(self, system, messages, tools=None, max_tokens=1500) -> Reply:
         body: dict[str, Any] = {
@@ -216,7 +254,14 @@ class OpenAICompatChat:
         }
         if tools:
             body["tools"] = [{"type": "function", "function": t} for t in tools]
-        payload = _post(self.url, body, {"Authorization": f"Bearer {self.api_key}"})
+        payload = _post(
+            self.url, body, {"Authorization": f"Bearer {self.api_key}", **self.extra_headers}
+        )
+        if payload.get("error"):
+            err = payload["error"]
+            raise LLMError(
+                f"provider error: {err.get('message', err) if isinstance(err, dict) else err}"
+            )
         try:
             msg = payload["choices"][0]["message"]
         except (KeyError, IndexError) as exc:
@@ -228,13 +273,15 @@ class OpenAICompatChat:
             except json.JSONDecodeError:
                 args = {"_unparseable": tc["function"].get("arguments")}
             calls.append(ToolCall(tc["id"], tc["function"]["name"], args))
-        usage = payload.get("usage", {})
+        usage = payload.get("usage") or {}
+        cost = usage.get("cost")
         return Reply(
             text=msg.get("content") or "",
             tool_calls=calls,
             input_tokens=int(usage.get("prompt_tokens", 0)),
             output_tokens=int(usage.get("completion_tokens", 0)),
             raw_assistant={k: v for k, v in msg.items() if k in ("role", "content", "tool_calls")},
+            cost_usd=float(cost) if isinstance(cost, int | float) else None,
         )
 
     def tool_result_message(self, results):
@@ -242,6 +289,48 @@ class OpenAICompatChat:
             {"role": "tool", "tool_call_id": call.id, "content": content}
             for call, content in results
         ]
+
+
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+OPENROUTER_DEFAULT_MODEL = "anthropic/claude-sonnet-5"
+
+
+def openrouter_chat(model: str | None = None, api_key: str | None = None) -> OpenAICompatChat:
+    """OpenRouter speaks the OpenAI chat-completions format, tools included.
+
+    The attribution headers are optional; they label requests in your
+    OpenRouter dashboard.
+    """
+    return OpenAICompatChat(
+        model,
+        api_key,
+        base_url=os.environ.get("SPIKE_LLM_BASE_URL", OPENROUTER_BASE),
+        extra_headers={
+            "HTTP-Referer": "https://github.com/Vanamali-Sims/Raggeoni",
+            "X-OpenRouter-Title": "Raggeoni Spike Investigator",
+            "X-Title": "Raggeoni Spike Investigator",
+        },
+        key_names=("OPENROUTER_API_KEY",),
+        default_model=OPENROUTER_DEFAULT_MODEL,
+    )
+
+
+PROVIDER_KEYS: dict[str, tuple[str, ...]] = {
+    "openrouter": ("OPENROUTER_API_KEY",),
+    "anthropic": ("ANTHROPIC_API_KEY",),
+    "openai": ("OPENAI_API_KEY", "GROQ_API_KEY"),
+    "groq": ("OPENAI_API_KEY", "GROQ_API_KEY"),
+    "openai-compatible": ("OPENAI_API_KEY", "GROQ_API_KEY"),
+}
+
+
+def provider_name() -> str:
+    return os.environ.get("SPIKE_LLM_PROVIDER", "openrouter").lower()
+
+
+def has_llm_key() -> bool:
+    """True when the configured provider has a key, so LLM checks can run."""
+    return any(os.environ.get(k) for k in PROVIDER_KEYS.get(provider_name(), ()))
 
 
 class FailingChat:
@@ -257,7 +346,9 @@ class FailingChat:
 
 
 def make_chat(provider: str | None = None, model: str | None = None) -> ChatModel:
-    provider = (provider or os.environ.get("SPIKE_LLM_PROVIDER", "anthropic")).lower()
+    provider = (provider or provider_name()).lower()
+    if provider == "openrouter":
+        return openrouter_chat(model)
     if provider == "anthropic":
         return AnthropicChat(model)
     if provider in ("openai", "groq", "openai-compatible"):

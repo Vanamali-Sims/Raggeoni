@@ -21,9 +21,9 @@ jobs:
     outputs:
       passed: ${{ steps.run.outputs.passed }}
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
-      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'openrouter' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'anthropic/claude-sonnet-5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
