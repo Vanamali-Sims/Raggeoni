@@ -1,0 +1,82 @@
+name: warden
+
+# Daily health check: gates, correctness, fault injection, red team, budgets.
+# Commits health/, redeploys the site, and opens (or updates) an issue when
+# something critical fails.
+on:
+  schedule:
+    - cron: "17 21 * * *" # 07:17 NEM time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pages: write
+  id-token: write
+
+jobs:
+  warden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      passed: ${{ steps.run.outputs.passed }}
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[spike]"
+      - name: Latest live window
+        uses: actions/cache/restore@v4
+        with:
+          path: data/spike/live.duckdb
+          key: live-${{ github.run_id }}
+          restore-keys: live-
+      - name: Latest exam runs
+        uses: dawidd6/action-download-artifact@v6
+        continue-on-error: true
+        with:
+          workflow: eval.yml
+          name: exam-runs
+          path: eval/spikes/runs
+          if_no_artifact_found: ignore
+      - name: Run the Warden
+        id: run
+        run: |
+          set +e
+          raggeoni-spike warden --save > warden.md
+          code=$?
+          cat warden.md
+          echo "passed=$([ $code -eq 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Commit health
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add health/
+          git diff --cached --quiet || { git commit -m "Warden: daily health check"; git pull --rebase --autostash && git push; }
+      - name: Open or update an issue on failure
+        if: steps.run.outputs.passed == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create warden --color B60205 --description "Opened by the Warden" 2>/dev/null || true
+          existing=$(gh issue list --label warden --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file warden.md
+          else
+            gh issue create --title "Warden: health check failing" --label warden --body-file warden.md
+          fi
+
+  pages:
+    needs: warden
+    if: always()
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

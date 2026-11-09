@@ -1,0 +1,83 @@
+name: investigate
+
+# Investigate any past window on demand: rebuild the data from AEMO archives,
+# run the team, commit the report.
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "NSW1, QLD1, VIC1, SA1 or TAS1"
+        required: true
+      start:
+        description: "High-price window start, NEM time (YYYY-MM-DD HH:MM:SS)"
+        required: true
+      end:
+        description: "High-price window end, NEM time"
+        required: true
+      brain:
+        description: "llm or rules"
+        default: "llm"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  investigate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Inputs go through env, never straight into scripts (avoids script injection).
+      IN_REGION: ${{ inputs.region }}
+      IN_START: ${{ inputs.start }}
+      IN_END: ${{ inputs.end }}
+      IN_BRAIN: ${{ inputs.brain }}
+      OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[spike]"
+      - uses: actions/cache@v4
+        with:
+          path: data/spike/cache
+          key: archives-${{ github.run_id }}
+          restore-keys: archives-
+      - name: Build incident data
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import timedelta
+          from pathlib import Path
+          from raggeoni.spike.config import check_region, parse_ts
+          from raggeoni.spike.ingest import build_incident
+          region = check_region(os.environ["IN_REGION"])
+          start = parse_ts(os.environ["IN_START"]) - timedelta(hours=3)
+          end = parse_ts(os.environ["IN_END"]) + timedelta(hours=1)
+          print(build_incident(Path("data/spike/manual.duckdb"), region=region, start=start, end=end, baseline_days=14))
+          PY
+      - name: Investigate
+        run: |
+          BRAIN="$IN_BRAIN"
+          [ -z "$ANTHROPIC_API_KEY" ] && BRAIN=rules
+          raggeoni-spike investigate --db data/spike/manual.duckdb --region "$IN_REGION" \
+            --start "$IN_START" --end "$IN_END" --brain "$BRAIN"
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add investigations/
+          git diff --cached --quiet || { git commit -m "Investigate $IN_REGION $IN_START"; git pull --rebase --autostash && git push; }
+
+  pages:
+    needs: investigate
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

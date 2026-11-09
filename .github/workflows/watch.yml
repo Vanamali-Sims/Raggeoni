@@ -1,0 +1,88 @@
+name: watch
+
+# Every 10 minutes: pull the latest 5-minute data and market notices, detect
+# spikes, and investigate any that have settled. New reports are committed
+# to investigations/ and the site is redeployed.
+#
+# GitHub may delay scheduled runs when it is busy. That's fine for a public
+# feed; a production version would run detection on an always-on scheduler.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      new: ${{ steps.commit.outputs.new }}
+    env:
+      OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      SPIKE_THRESHOLD: ${{ vars.SPIKE_THRESHOLD || '300' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[spike]"
+
+      # The rolling 8-day live window is carried between runs in the cache.
+      - name: Restore live window
+        uses: actions/cache/restore@v4
+        with:
+          path: data/spike/live.duckdb
+          key: live-${{ github.run_id }}
+          restore-keys: live-
+
+      - name: Market notices (last day)
+        continue-on-error: true
+        run: raggeoni-spike notices --days 1
+
+      - name: Refresh, detect, investigate
+        run: |
+          BRAIN=rules
+          [ -n "$ANTHROPIC_API_KEY" ] && BRAIN=llm
+          raggeoni-spike watch --brain "$BRAIN"
+
+      - name: Save live window
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/spike/live.duckdb
+          key: live-${{ github.run_id }}
+
+      - name: Commit new investigations
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add investigations/
+          if git diff --cached --quiet; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "Investigate new price spike(s)"
+            git pull --rebase --autostash && git push
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  pages:
+    needs: watch
+    if: needs.watch.outputs.new == 'true'
+    uses: ./.github/workflows/pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write

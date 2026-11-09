@@ -11,7 +11,7 @@ from typing import Any
 
 from raggeoni.harness import ItemScore, parse_plan_text, score_item
 from raggeoni.hydrate import load_jsonl
-from raggeoni.ingest import repo_root
+from raggeoni.ingest import db_path, repo_root
 
 
 def predictions_from_gold(items: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -178,6 +178,13 @@ def main(argv: list[str] | None = None) -> int:
     if sum(modes) != 1:
         print("pick one of --self-test, --arm 1, or --predictions", file=sys.stderr)
         return 2
+
+    if (args.self_test or args.arm or args.predictions) and not db_path().exists():
+        print(
+            f"missing {db_path()}. Build it first: uv run python -m raggeoni.ingest",
+            file=sys.stderr,
+        )
+        return 1
 
     if args.self_test:
         scores = score_items(items, predictions_from_gold(items))

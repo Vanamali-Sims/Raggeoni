@@ -1,0 +1,93 @@
+name: eval
+
+# The exam gate. Runs on PRs that touch the agents, tools, prompts or exam,
+# and posts the score (and the change versus main's baseline) as a PR comment.
+on:
+  pull_request:
+    paths:
+      - "src/raggeoni/spike/**"
+      - "eval/spikes/**"
+      - ".github/workflows/eval.yml"
+  workflow_dispatch:
+    inputs:
+      arm:
+        description: "rules, llm, llm-no-skeptic or llm-no-rag"
+        default: "llm"
+      split:
+        description: "eval or holdout (run holdout once, at the end)"
+        default: "eval"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  exam:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      IN_ARM: ${{ inputs.arm || 'llm' }}
+      IN_SPLIT: ${{ inputs.split || 'eval' }}
+      OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      SPIKE_PRICE_IN_PER_MTOK: ${{ vars.SPIKE_PRICE_IN_PER_MTOK }}
+      SPIKE_PRICE_OUT_PER_MTOK: ${{ vars.SPIKE_PRICE_OUT_PER_MTOK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[spike]"
+
+      # Archive downloads never change, so cache them across runs.
+      - name: Restore exam data
+        uses: actions/cache@v4
+        with:
+          path: data/spike
+          key: exam-data-${{ hashFiles('eval/spikes/events.jsonl') }}
+          restore-keys: exam-data-
+
+      - name: Build exam data (only events not already cached)
+        run: raggeoni-spike exam build-data --split all --baseline-days 14
+
+      - name: Synthetic smoke (offline, planted causes)
+        run: raggeoni-spike exam run --synthetic --arm rules
+
+      - name: Rules baseline
+        run: raggeoni-spike exam run --arm rules --split "$IN_SPLIT" --summary-md rules.md
+
+      - name: LLM team
+        id: llm
+        if: env.ANTHROPIC_API_KEY != ''
+        run: |
+          BASE="eval/spikes/baselines/${IN_ARM}-${IN_SPLIT}.json"
+          if [ -f "$BASE" ]; then CMP="--compare $BASE"; else CMP=""; fi
+          raggeoni-spike exam run --arm "$IN_ARM" --split "$IN_SPLIT" $CMP --summary-md llm.md
+
+      - name: Upload run files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exam-runs
+          path: eval/spikes/runs/
+
+      - name: Comment on the PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "## Spike exam"
+            echo
+            [ -f llm.md ] && cat llm.md && echo
+            [ -f rules.md ] && cat rules.md
+            [ -f llm.md ] || echo "_LLM arm skipped: no ANTHROPIC_API_KEY secret (forks never get secrets)._"
+          } > comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md --edit-last \
+            || gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md

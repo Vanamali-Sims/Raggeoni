@@ -1,0 +1,32 @@
+name: ci
+
+# Deterministic gates. No LLM, no network data. Runs on every push and PR.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: uv pip install --system -e ".[spike,dev]"
+      - name: Lint
+        run: |
+          ruff check src tests
+          ruff format --check src/raggeoni/spike tests/spike
+      - name: Type check (spike package)
+        run: mypy
+      - name: Tests
+        run: pytest
+      - name: Offline smoke investigation (scripted LLM, synthetic fixture)
+        run: raggeoni-spike demo --out /tmp/demo

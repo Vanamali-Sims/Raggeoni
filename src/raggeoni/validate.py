@@ -162,9 +162,7 @@ def _validate_aggregate(plan: dict) -> dict[str, Any]:
         "select": select,
         "group_by": list(group_by),
     }
-    if group_by:
-        out["limit"] = _validate_limit(plan.get("limit"), required=True)
-    elif "limit" in plan:
+    if group_by or "limit" in plan:
         out["limit"] = _validate_limit(plan.get("limit"), required=True)
     order_by = _validate_order_by(plan.get("order_by"), allowed=order_allowed)
     if order_by:

@@ -6,7 +6,7 @@ import unittest
 
 from raggeoni.harness import parse_plan_text, score_item
 from raggeoni.hydrate import load_jsonl
-from raggeoni.ingest import repo_root
+from raggeoni.ingest import db_path, repo_root
 
 
 def _v1() -> list[dict]:
@@ -31,6 +31,7 @@ class ParseTests(unittest.TestCase):
 
 
 class ScoreTests(unittest.TestCase):
+    @unittest.skipUnless(db_path().exists(), "data/nem.duckdb not built")
     def test_gold_plan_is_correct(self) -> None:
         rows = [row for row in _v1() if row["id"] == "fact-001"]
         if not rows:
@@ -40,6 +41,7 @@ class ScoreTests(unittest.TestCase):
         self.assertTrue(score.ok)
         self.assertIsNone(score.error_class)
 
+    @unittest.skipUnless(db_path().exists(), "data/nem.duckdb not built")
     def test_refuse_vs_lookup_is_false_answer(self) -> None:
         rows = [row for row in _v1() if row["id"] == "oos-001"]
         if not rows:

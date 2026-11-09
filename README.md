@@ -1,103 +1,140 @@
-# Raggeoni
+# Raggeoni: NEM Spike Investigator
 
-**A ground-truth-first eval harness for asking questions of Australian electricity market (NEM) data in plain English.**
+**When an Australian electricity price spikes, a team of agents works out why, and every number in the explanation is checked against the data.**
 
-Raggeoni measures how well a language model can turn a question like *"What was the maximum RRP in QLD1 in September 2025?"* into a correct answer, using a frozen, checksummed dataset and an eval set whose answers were computed by code rather than typed in by a person.
+Sometimes a region's price jumps from $80 to $15,000/MWh in minutes. Traders, retailers, battery owners and journalists all ask the same question: *why?* Today the official answer arrives months later, in the regulator's quarterly report. This project produces a cited explanation within minutes of a spike settling, and then checks itself against the regulator's findings when they come out.
 
-The model never writes SQL. It writes a small JSON **query plan**; Raggeoni validates the plan, compiles it to parameterised SQL, runs it against DuckDB and compares the result exactly against the stored gold answer. A model is scored on whether it got the *right numbers*, not on whether its query looks right.
+```
+ AEMO 5-min data ─┐
+ Market notices ──┼─► watch (every 10 min) ─► spike? ─► investigation team ─► verifier ─► report + site
+ Generation mix ──┘                                          │
+                                                             ▼
+ AER quarterly report ───────────────► reconcile ─► "did we get it right?" ─► PR adding exam rows
+                                                             │
+ Warden (daily) ── gates · exam regression · fault injection · red team · budgets ─► health page
+```
 
 ---
 
-## Status
+## What a report looks like
 
-| Piece | State |
-|---|---|
-| Data freeze (12 months, 5 regions, 525,600 rows) | ✅ Done, recorded in `data/MANIFEST.json` with SHA-256s |
-| Query-plan DSL + validator + SQL compiler | ✅ Done, unit-tested |
-| Eval set `v1` (200 questions, gold plans + gold results) | ✅ Done and hydrated |
-| Scoring harness + `EXEC_ACC` report | ✅ Done |
-| Arm 1 baseline (prompted model → plan) | 🟡 Wired up, **not yet run** (no model/API key configured) |
-| Retrieval / RAG arms | ⬜ Not started |
+> **SA1 reached $16,239.51/MWh at 19:50, driven mainly by a wind lull, unusually high demand and interconnector or network limits.**
+> ✅ all numbers grounded in evidence (27/27)
+>
+> **Wind lull: high confidence**
+> - Wind output was 141.3 MW against a typical 746.0 MW for this time of day (percentile 0.0). *(E10)*
+> - This accounted for 37.8% (550.9 MW) of the worsening in the supply-demand balance. *(E16)*
+>
+> **Network / interconnector limits: high confidence**
+> - Heywood carried 250.0 MW into SA1 against a limit of 250.0 MW, 400.0 MW below its typical limit. *(E7)*
+> - Market notice 990101 reported: Planned outage - South East to Tailem Bend 275 kV line. *(E11)*
+>
+> **Ruled out: solar drop.** Solar was normal for the time of day.
 
-The next milestone is the first Arm 1 number on the `eval` split.
+That example is the **synthetic demo incident** (dated 2031 so it can't be mistaken for real data), which has four causes planted in it. Run it yourself with `raggeoni-spike demo`.
 
 ---
 
 ## How it works
 
+### 1. The investigation team (LangGraph)
+
 ```
-question ──► model ──► JSON plan ──► validate ──► compile ──► DuckDB ──► result
-                                       │                                   │
-                              rejects anything                    canonicalised,
-                              outside the DSL                    compared exactly
-                                                                   to gold_result
+overview ─► lead ─┬─► evidence agent × N (parallel, one per hypothesis) ─► skeptic ─┐
+                  │                     ▲                                          │
+                  │                     └──── challenged findings, round 2 ◄───────┤
+                  └──────────────────────────────────────────────────────────────► writer ─► verifier
 ```
 
-1. **Freeze the data** (`raggeoni.ingest`). Downloads AEMO's monthly *Aggregated Price and Demand* CSVs for NSW1, QLD1, VIC1, SA1 and TAS1, August 2025 – July 2026, and loads them into `data/nem.duckdb`. Ten freeze checks must pass (row count, regions, no duplicates or nulls, no gaps in the 5-minute sequence, expected first/last timestamps, negative prices present, balanced regions, …). Hashes of every source file, the DB and a canonical CSV export are written to `data/MANIFEST.json`.
-2. **Author questions** (`eval/author_v1.py`). Generates 200 questions, each with a hand-designed `gold_plan`.
-3. **Hydrate gold answers** (`raggeoni.hydrate`). Executes each `gold_plan` and writes the result into `gold_result`, so no gold number is typed by a person.
-4. **Score predictions** (`raggeoni.eval`). Runs a model's plans (or a predictions file) through the same pipeline and reports exact-match execution accuracy.
-
-### The data
-
-One table, `price_demand`. One row = one region × one 5-minute interval.
-
-| column | meaning |
+| Role | Job |
 |---|---|
-| `settlement_ts` | interval-**ending** timestamp, NEM time (AEST, UTC+10, no daylight saving) |
-| `region` | `NSW1`, `QLD1`, `VIC1`, `SA1`, `TAS1` |
-| `rrp` | regional reference price, $/MWh (can be negative, ranges −1,000 to 23,200 in this window) |
-| `total_demand` | MW |
-| `period_type` | always `TRADE` |
+| **Overview** (code) | Runs the four checks every investigation needs, so the lead starts from facts. |
+| **Lead** | Proposes 3–6 competing hypotheses from a fixed list of causes, including at least one it expects to rule out. |
+| **Evidence agents** | One per hypothesis, in parallel. Each runs a tool-use loop (2–5 calls), trying to *disprove* as well as support. |
+| **Skeptic** | Attacks weak findings: *"wind drops every evening, was this unusual?"* Sends up to 3 back for a second round. |
+| **Writer** | Ranks causes using the supply-gap breakdown and cites evidence IDs for every claim. |
+| **Verifier** (code) | Checks every number against the cited evidence. One repair attempt, then ungrounded claims are dropped and the report says so. |
 
-Window: `2025-08-01 00:05:00` → `2026-08-01 00:00:00` inclusive. A calendar day *D* is `D 00:05:00` through `D+1 00:00:00`.
+### 2. The tools do the maths, not the model
 
-### The query-plan DSL
+| Tool | What it computes |
+|---|---|
+| `unusualness` | Value vs the same time of day over the last 14–30 days (mean, z-score, percentile). Needs an extreme percentile **and** a material difference, so steady series don't trigger false alarms. |
+| `demand_surprise` | Actual demand vs AEMO's own 5-minute-ahead forecast. Was the market caught off guard? |
+| `interconnector_status` | Flow into the region on each link: at its limit? constraint binding? limit reduced vs normal? |
+| `supply_gap` | Splits the worsening balance into demand ↑, each fuel ↓ and imports ↓, in MW and % share. |
+| `generation_change` | Output by fuel type now vs N minutes ago. |
+| `price_profile` | Peak, duration, and whether neighbours stayed cheap (price separation). |
+| `search_notices` | RAG over AEMO market notices (below). |
+| `safe_query` | Ad-hoc price/demand questions via Raggeoni's validated plan language. **The model never writes SQL.** |
+| `similar_events` | Past investigations with the most similar conditions. |
 
-Four intents, defined in `src/raggeoni/plan_schema.json` and enforced by `validate.py`:
+Every tool returns an evidence record with an ID and machine-readable facts. Tools never crash the investigation: missing data comes back as `unavailable` with the reason.
 
-| intent | use | example |
+### 3. RAG over market notices
+
+The numbers show *what* happened; notices often say *why* (a unit trip, a planned line outage, a constraint).
+
+1. **Filter first (exact):** notices from 24 h before the window to its end, tagged with the region or a neighbour.
+2. **Rank (hybrid):** BM25 for exact codes like `TORRB2`, embeddings for meaning ("trip" ≈ "contingency event"), fused with reciprocal rank fusion.
+3. **Cite by ID:** the verifier checks each cited notice was returned by a search, falls inside the window, and isn't flagged as suspicious.
+
+Notices are untrusted text. Instruction-like content is flagged, and all notice text is wrapped as quoted data. The Warden plants a prompt injection in a notice on every run to prove this holds.
+
+The **ablation shows what RAG is worth**: on the demo incident, turning it off loses the generator trip, because it is invisible in the numbers alone.
+
+### 4. The exam: graded against the regulator
+
+`eval/spikes/events.jsonl` holds **20 real price events (Nov 2025 – Jun 2026)** with causes drafted from the AER's quarterly reports (source URL and pages on every row, 5 events held out). Scoring is precision/recall/F1 over cause labels, plus verification rate, latency, tokens and cost.
+
+| Arm | What it is |
+|---|---|
+| `rules` | Hand-written deterministic rules. **The baseline the LLM team has to beat to justify its cost.** |
+| `llm` | The full team. |
+| `llm-no-skeptic`, `llm-no-rag` | Ablations: what does each part add? |
+
+Rebidding and unit ramp limits need bid and unit data the system doesn't load, so agents must call them "not assessable" and the exam doesn't score them.
+
+### 5. The Warden
+
+Runs daily (and on demand). Cheap, certain checks first; an LLM only at the end to explain failures.
+
+| Group | Checks |
+|---|---|
+| Gates | Exam file valid · live data fresh · prices in range · no duplicate/missing intervals |
+| Correctness | Planted-cause incident · exam F1 regression vs the last run |
+| Fault injection | Model outage · missing generation data · empty database |
+| Red team | Prompt injection in a notice · SQL smuggled into a query plan · invented number in a report |
+| Budgets | p95 latency · tokens per event · verification rate |
+
+### 6. It keeps its own exam honest
+
+When a new AER report is published, `reconcile` retrieves the passages about each live investigation, extracts the official causes, compares them with what the agents said *at the time*, and opens a pull request proposing new exam rows. **A human reviews the labels and merges.** The exam grows from real outcomes, never by itself.
+
+### 7. GitHub Actions
+
+| Workflow | When | What |
 |---|---|---|
-| `lookup` | fetch row(s); `filters` and `limit` required | RRP in TAS1 at a given timestamp |
-| `aggregate` | `max`/`min`/`avg`/`sum` on `rrp` or `total_demand`, or `count`; optional `group_by` | max QLD1 RRP in Sept 2025 |
-| `compare` | one metric over exactly two filtered sides | avg RRP NSW1 vs VIC1 on a day |
-| `refuse` | the table can't answer it | unit output, forecasts, WEM, dates outside the window |
+| `ci` | every push / PR | lint, types, tests, offline demo |
+| `eval` | PRs touching agents, tools, prompts or exam | exam on cached data; scorecard and Δ vs baseline as a PR comment |
+| `watch` | every 10 min | refresh live data and notices, investigate settled spikes, commit reports |
+| `investigate` | manual | rebuild any past window from AEMO archives and investigate it |
+| `warden` | daily | health checks; opens or updates an issue on failure |
+| `reconcile` | manual, per AER report | proposes exam rows as a PR |
+| `pages` | after the above | publishes the investigation feed and health page |
 
-```json
-{"intent": "aggregate",
- "filters": [{"col": "region", "op": "=", "val": "QLD1"},
-             {"col": "settlement_ts", "op": ">=", "val": "2025-09-01 00:05:00"},
-             {"col": "settlement_ts", "op": "<=", "val": "2025-10-01 00:00:00"}],
- "select": [{"fn": "max", "col": "rrp", "as": "max_rrp"}]}
-```
+---
 
-The validator rejects unknown fields, columns, regions, functions and reserved aliases. The compiler only emits whitelisted identifiers and binds every value as a parameter, so a plan can't inject SQL.
+## Status: what has and hasn't been tested
 
-### The eval set
-
-`eval/v1.jsonl` has 200 questions, all hydrated:
-
-| bucket | eval | holdout | total |
-|---|---|---|---|
-| structural (about the table itself) | 32 | 8 | 40 |
-| factual (numbers from the data) | 96 | 24 | 120 |
-| out-of-scope (should refuse) | 32 | 8 | 40 |
-
-By intent: 97 aggregate, 42 lookup, 40 refuse, 21 compare. `eval/smoke.jsonl` has 4 quick sanity questions, one per intent.
-
-**Holdout discipline:** develop against `--split eval`; run `--split holdout` once at the end. `--arm 1` refuses to run on `--split all`.
-
-### Scoring
-
-A prediction counts as correct only if its executed result exactly equals `gold_result` (floats rounded to 4 dp, timestamps formatted, rows sorted when the plan has no `order_by`). Failures are classed as:
-
-- `parse`: no JSON object in the model output
-- `invalid_plan`: JSON that isn't in the DSL
-- `sql`: DuckDB error (or missing DB)
-- `row_cap`: more than 1,000 rows
-- `false_answer`: answered when it should have refused
-- `false_refuse`: refused when it should have answered
-- `mismatch`: ran fine, wrong result
+| Piece | State |
+|---|---|
+| Parsers (AEMO MMS CSV, nested archive zips, P5MIN, Open Electricity, market notices) | ✅ Unit-tested against fixtures written in each source's published format |
+| Tools, RAG, verifier, agent graph, Warden, site | ✅ Tested on the synthetic incident; rules arm finds all 4 planted causes and rules out the 2 decoys |
+| LLM path (tool loop, skeptic round, repair, outage fallback, token budget) | ✅ Tested with a scripted fake model |
+| **Live downloads** from NEMWeb and Open Electricity | ⚠️ **Not yet run against the real endpoints**: they were unreachable from the build environment. First real run happens on your machine or in Actions. |
+| **Exam scores on the 20 real events** | ⬜ Not run yet: needs the exam data built and an API key |
+| **Exam labels** | 🟡 Drafted from AER reports, all `reviewed: false`. Check each against its source before trusting the scores. |
 
 ---
 
@@ -106,73 +143,76 @@ A prediction counts as correct only if its executed result exactly equals `gold_
 Requires Python ≥ 3.11 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-# 1. Build the frozen DB (downloads 60 monthly CSVs from aemo.com.au, ~35 MB DB)
-uv run python -m raggeoni.ingest
-uv run python -m raggeoni.ingest --check-only      # re-run freeze checks only
+uv sync --extra spike --extra dev
 
-# 2. Confirm the harness agrees with itself (must print EXEC_ACC 1.000)
-uv run python -m raggeoni.hydrate eval/v1.jsonl --verify
-uv run python -m raggeoni.eval --self-test
+# Offline, no keys: investigate the synthetic incident
+uv run raggeoni-spike demo
 
-# 3. Run tests
-uv run python -m unittest discover -s tests -v
+# The health checks
+uv run raggeoni-spike warden --no-llm
+
+# Tests
+uv run pytest
 ```
 
-`data/nem.duckdb` and `data/raw/` are git-ignored, so a fresh clone must run step 1 before anything that touches data. After building, check that `duckdb_sha256` / `canonical_sha256` match `data/MANIFEST.json`. If AEMO has revised a file, the source hashes will differ.
+### Real data
 
-### Running a model (Arm 1)
+Copy `.env.example` to `.env` and fill in what you have. NEMWeb needs no key; generation data needs a free [Open Electricity](https://platform.openelectricity.org.au/) key; the LLM team needs an Anthropic (or OpenAI-compatible) key.
 
 ```bash
-export OPENAI_API_KEY=...            # or RAGGEONI_API_KEY
-export RAGGEONI_MODEL=gpt-4o-mini    # optional, this is the default
-uv run python -m raggeoni.eval --arm 1 --split eval --out eval/runs/arm1-eval.jsonl
+# Build data for one exam event, then run both arms
+# (events without data yet are listed as "no data", not failed)
+uv run raggeoni-spike exam build-data --event aer-2026q2-sa-0621
+uv run raggeoni-spike exam run --arm rules
+uv run raggeoni-spike exam run --arm llm
+
+# Live: pull the latest data, detect and investigate
+uv run raggeoni-spike refresh-live
+uv run raggeoni-spike watch --brain llm
 ```
 
-Arm 1 sends the system prompt in `src/raggeoni/baseline/prompt.txt` (schema, time conventions, four worked examples) at temperature 0 with JSON mode, then scores each plan.
+`raggeoni-spike` reads `.env` from the repo root automatically (real environment variables win), so this works the same on Windows, macOS and Linux.
 
-### Scoring your own predictions
+### Turning on the Actions
 
-```bash
-# predictions.jsonl: one {"id": "...", "plan": {...}} per line
-uv run python -m raggeoni.eval --predictions predictions.jsonl --split eval
-```
-
-### Single-plan CLI
-
-```bash
-uv run python -m raggeoni.plan --compile --plan '{"intent":"refuse"}'   # show SQL only
-uv run python -m raggeoni.plan --file my_plan.json                       # execute
-```
-
-Console scripts `raggeoni-ingest`, `raggeoni-plan`, `raggeoni-hydrate` and `raggeoni-eval` are also installed.
+1. Repo **Settings → Secrets and variables → Actions**: add `ANTHROPIC_API_KEY` and `OPENELECTRICITY_API_KEY` as secrets. Optional variables: `SPIKE_MODEL`, `SPIKE_THRESHOLD`, `SPIKE_PRICE_IN_PER_MTOK`, `SPIKE_PRICE_OUT_PER_MTOK`.
+2. **Settings → Pages → Source: GitHub Actions.**
+3. Run `eval` once by hand, then save its scorecard to `eval/spikes/baselines/llm-eval.json` so future PRs are compared against it.
+4. `watch` runs every 10 minutes, which uses Actions minutes. Pause it from the Actions tab when you don't need it.
 
 ---
+
+## Design decisions
+
+Short records in [`docs/adr/`](docs/adr/):
+
+1. [Typed tools instead of model-written code](docs/adr/0001-typed-tools.md)
+2. [A deterministic verifier instead of an LLM judge](docs/adr/0002-deterministic-verifier.md)
+3. [Rules as the baseline arm](docs/adr/0003-rules-baseline.md)
+4. [Frozen exam, live product](docs/adr/0004-frozen-exam-live-product.md)
+
+## The original Raggeoni harness
+
+This project grew out of a ground-truth-first harness for plain-English questions over a frozen year of NEM prices: 200 questions, gold answers computed by code, and a query-plan language the model fills in instead of writing SQL. That harness is still here and is reused as the `safe_query` tool. See [`docs/harness.md`](docs/harness.md).
 
 ## Layout
 
 ```
-data/MANIFEST.json        frozen-data fingerprint (committed); nem.duckdb is built locally
-eval/author_v1.py         generates v1.jsonl questions + gold plans
-eval/v1.jsonl             200-question eval set with gold results
-eval/smoke.jsonl          4-question smoke set
-src/raggeoni/
-  constants.py            frozen window, regions, source URLs
-  ingest.py, checks.py    download → DuckDB → freeze checks → manifest
-  schema.sql              price_demand + meta tables
-  plan_schema.json        JSON Schema for the DSL
-  validate.py             DSL validator / normaliser (no SQL)
-  compile.py              plan → parameterised SQL
-  execute.py              run + canonicalise results
-  hydrate.py              gold_plan → gold_result
-  harness.py, eval.py     scoring and EXEC_ACC report
-  baseline/               Arm 1 prompt + OpenAI client
-tests/                    DSL and harness tests
+src/raggeoni/spike/
+  sources/          NEMWeb (MMS parser, DispatchIS, P5MIN), Open Electricity, market notices
+  store.py          incident DuckDB (price_demand matches the harness schema)
+  detect.py         spike detection
+  tools.py          analysis tools + evidence ledger (evidence.py)
+  rag.py            notice retrieval
+  agents.py         lead / evidence / skeptic / writer, LLM and rules brains
+  graph.py          LangGraph orchestration
+  verify.py         grounding verifier
+  exam.py           AER-labelled exam, arms, scoring
+  warden.py         health checks
+  reconcile.py      AER report → proposed exam rows
+  site.py           GitHub Pages site
+  prompts/          one prompt per role
+eval/spikes/        events.jsonl (exam), baselines/
+investigations/     committed reports (written by watch)
+health/             Warden output
 ```
-
----
-
-## Known issues
-
-- **Two harness tests fail when the DB isn't built.** `test_gold_plan_is_correct` and `test_refuse_vs_lookup_is_false_answer` in `tests/test_harness.py` need `data/nem.duckdb` but don't skip without it the way `test_dsl.py` does. On a fresh clone: 17 pass, 2 fail, 2 skip until you run ingest.
-- **A missing DB is reported as a scoring error.** `--self-test` without the DB prints `EXEC_ACC 0.200` (only the refusals pass) instead of failing up front. Build the DB first.
-- **The freeze can't be fully reproduced unattended.** AEMO occasionally revises published CSVs; if a re-download hashes differently, the gold answers may no longer match.

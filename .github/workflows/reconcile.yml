@@ -1,0 +1,58 @@
+name: reconcile
+
+# When the AER publishes a new quarterly report on high prices, compare it with
+# what the live agents said at the time, and open a PR that proposes new exam
+# rows. A human reviews the labels and merges; the exam never changes on its own.
+on:
+  workflow_dispatch:
+    inputs:
+      report_url:
+        description: "URL of the AER report PDF"
+        required: true
+      use_llm:
+        description: "Extract causes with the LLM (true) or keyword rules (false)"
+        default: "true"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      IN_REPORT_URL: ${{ inputs.report_url }}
+      IN_USE_LLM: ${{ inputs.use_llm }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv pip install --system -e ".[spike]"
+      - name: Compare live investigations with the report
+        run: |
+          LLM=""
+          [ "$IN_USE_LLM" = "true" ] && [ -n "$ANTHROPIC_API_KEY" ] && LLM="--llm"
+          case "$IN_REPORT_URL" in https://www.aer.gov.au/*) ;; *) echo "Only aer.gov.au reports are accepted"; exit 1;; esac
+          raggeoni-spike reconcile --report-url "$IN_REPORT_URL" $LLM --pr-body pr.md
+      - name: Open a PR with proposed exam rows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! ls eval/spikes/proposed/*.json >/dev/null 2>&1; then
+            echo "No live investigations matched this report."
+            exit 0
+          fi
+          raggeoni-spike reconcile --merge
+          branch="reconcile/$(date +%Y%m%d-%H%M)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add eval/spikes/
+          git commit -m "Propose exam rows from AER report"
+          git push -u origin "$branch"
+          gh pr create --title "Exam: proposed rows from new AER report" --body-file pr.md --base main --head "$branch"
