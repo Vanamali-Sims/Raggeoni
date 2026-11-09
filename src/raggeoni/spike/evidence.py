@@ -8,11 +8,14 @@ in ``facts`` rather than burying them in prose.
 from __future__ import annotations
 
 import json
+import re
+import threading
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 Number = int | float
+_NUM_IN_TEXT = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
 
 
 @dataclass
@@ -45,6 +48,8 @@ class Evidence:
         return json.dumps(payload, default=str)
 
     def numbers(self) -> list[float]:
+        """Every number this evidence can ground: facts, rows, arguments, and
+        numbers quoted inside text it returned (e.g. "275 kV" in a notice)."""
         found: list[float] = []
 
         def walk(value: Any) -> None:
@@ -52,6 +57,8 @@ class Evidence:
                 return
             if isinstance(value, int | float):
                 found.append(float(value))
+            elif isinstance(value, str):
+                found.extend(float(m.replace(",", "")) for m in _NUM_IN_TEXT.findall(value))
             elif isinstance(value, dict):
                 for v in value.values():
                     walk(v)
@@ -61,12 +68,14 @@ class Evidence:
 
         walk(self.facts)
         walk(self.rows)
+        walk(self.args)
         return found
 
 
 class Ledger:
     def __init__(self) -> None:
         self._items: dict[str, Evidence] = {}
+        self._lock = threading.Lock()  # evidence agents run in parallel
 
     def add(
         self,
@@ -79,17 +88,18 @@ class Ledger:
         rows: list[dict[str, Any]] | None = None,
         started: float | None = None,
     ) -> Evidence:
-        ev = Evidence(
-            evidence_id=f"E{len(self._items) + 1}",
-            tool=tool,
-            args=args,
-            status=status,
-            summary=summary,
-            facts=facts or {},
-            rows=rows or [],
-            elapsed_ms=int((time.perf_counter() - started) * 1000) if started else 0,
-        )
-        self._items[ev.evidence_id] = ev
+        with self._lock:
+            ev = Evidence(
+                evidence_id=f"E{len(self._items) + 1}",
+                tool=tool,
+                args=args,
+                status=status,
+                summary=summary,
+                facts=facts or {},
+                rows=rows or [],
+                elapsed_ms=int((time.perf_counter() - started) * 1000) if started else 0,
+            )
+            self._items[ev.evidence_id] = ev
         return ev
 
     def get(self, evidence_id: str) -> Evidence | None:
