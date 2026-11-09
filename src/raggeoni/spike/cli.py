@@ -124,28 +124,30 @@ def cmd_watch(args: argparse.Namespace) -> int:
 
 
 def cmd_investigate(args: argparse.Namespace) -> int:
-    from raggeoni.spike.detect import find_spikes
+    from raggeoni.spike.detect import SpikeEvent, event_id
     from raggeoni.spike.graph import RunOptions, investigate
     from raggeoni.spike.report import write_investigation
+    from raggeoni.spike.store import query
 
     db = Path(args.db)
-    events = [
-        e
-        for e in find_spikes(db, threshold=args.threshold, region=args.region)
-        if args.start <= e.peak_ts <= args.end
-    ]
-    if not events:
-        print("no spike above the threshold in that window", file=sys.stderr)
-        return 1
-    event = max(events, key=lambda e: e.peak_rrp)
-    inv = investigate(
-        event,
+    start, end = fmt_ts(parse_ts(args.start)), fmt_ts(parse_ts(args.end))
+    rows = query(
         db,
-        _brain(args.brain),
-        RunOptions(
-            rag=not args.no_rag, skeptic=not args.no_skeptic, history_dir=investigations_dir()
-        ),
+        "SELECT settlement_ts, rrp FROM price_demand WHERE region = ? "
+        "AND settlement_ts BETWEEN ? AND ? ORDER BY rrp DESC, settlement_ts",
+        [args.region, start, end],
     )
+    if not rows:
+        print(f"no {args.region} prices between {start} and {end}", file=sys.stderr)
+        return 1
+    peak_ts, peak_rrp = fmt_ts(rows[0][0]), round(float(rows[0][1]), 2)
+    event = SpikeEvent(
+        event_id(args.region, peak_ts), args.region, start, end, peak_ts, peak_rrp, len(rows)
+    )
+    opts = RunOptions(
+        rag=not args.no_rag, skeptic=not args.no_skeptic, history_dir=investigations_dir()
+    )
+    inv = investigate(event, db, _brain(args.brain), opts)
     folder = write_investigation(inv, Path(args.out) if args.out else investigations_dir())
     print(inv.report.headline)
     print(folder / "report.md")
@@ -164,7 +166,15 @@ def cmd_exam(args: argparse.Namespace) -> int:
                 print(f"{item.id}: exists")
                 continue
             print(f"{item.id}: building", flush=True)
-            print(json.dumps(exam.build_data(item, with_forecasts=not args.no_forecasts)))
+            print(
+                json.dumps(
+                    exam.build_data(
+                        item,
+                        baseline_days=args.baseline_days,
+                        with_forecasts=not args.no_forecasts,
+                    )
+                )
+            )
         return 0
     if args.synthetic:
         card, results = exam.run_synthetic(args.arm, Path(tempfile.mkdtemp()))
@@ -257,7 +267,6 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--region", required=True)
     i.add_argument("--start", required=True, help="NEM time, YYYY-MM-DD HH:MM:SS")
     i.add_argument("--end", required=True)
-    i.add_argument("--threshold", type=float, default=SPIKE_THRESHOLD)
     i.add_argument("--brain", choices=("rules", "llm"), default="llm", help=brain_help)
     i.add_argument("--no-rag", action="store_true")
     i.add_argument("--no-skeptic", action="store_true")
@@ -273,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--event")
     e.add_argument("--force", action="store_true")
     e.add_argument("--no-forecasts", action="store_true", help="skip P5MIN archives (large)")
+    e.add_argument(
+        "--baseline-days",
+        type=int,
+        default=14,
+        help="days of history before each event for 'is this unusual?' checks",
+    )
     e.add_argument(
         "--synthetic", action="store_true", help="run the offline planted-cause incident instead"
     )

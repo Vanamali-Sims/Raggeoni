@@ -36,8 +36,16 @@ class RemoteFile:
     stamp: str  # YYYYMMDD or YYYYMMDDHHMM taken from the file name
 
 
+_LISTINGS: dict[str, str] = {}
+
+
 def list_folder(folder_url: str, *, suffix: str = ".zip") -> list[RemoteFile]:
-    html = fetch(folder_url).decode("utf-8", errors="replace")
+    if "/Archive/" in folder_url and folder_url in _LISTINGS:
+        html = _LISTINGS[folder_url]
+    else:
+        html = fetch(folder_url).decode("utf-8", errors="replace")
+        if "/Archive/" in folder_url:
+            _LISTINGS[folder_url] = html
     files: list[RemoteFile] = []
     for href in list_links(html):
         name = href.rsplit("/", 1)[-1]
@@ -182,7 +190,25 @@ def archive_day_url(folder: str, day: date) -> str | None:
 def load_tables(url: str) -> dict[str, Table]:
     from raggeoni.spike.sources.mms import merge_tables
 
-    return merge_tables(parse_mms(text) for text in iter_csv_texts(fetch(url)))
+    return merge_tables(parse_mms(text) for text in iter_csv_texts(fetch_cached(url)))
+
+
+def fetch_cached(url: str) -> bytes:
+    """Archive files never change, so keep them on disk. Several exam events
+    share days, and CI restores this folder from the Actions cache."""
+    if "/Archive/" not in url:
+        return fetch(url)
+    from raggeoni.spike.config import data_dir
+
+    cache = data_dir() / "cache" / url.rsplit("/", 1)[-1]
+    if cache.exists() and cache.stat().st_size > 0:
+        return cache.read_bytes()
+    blob = fetch(url, timeout=300)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    tmp = cache.with_suffix(cache.suffix + ".part")
+    tmp.write_bytes(blob)
+    tmp.replace(cache)
+    return blob
 
 
 def days_between(start: datetime, end: datetime) -> list[date]:
