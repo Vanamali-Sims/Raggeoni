@@ -319,7 +319,25 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def load_dotenv(path: Path | None = None) -> None:
+    """Minimal .env loader: KEY=VALUE lines; real environment variables win."""
+    import os
+
+    path = path or repo_root() / ".env"
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
+
+
 def main(argv: list[str] | None = None) -> int:
+    load_dotenv()
     args = build_parser().parse_args(argv)
     if args.cmd == "reconcile" and not args.merge and not args.report_url:
         print("--report-url is required (or --merge)", file=sys.stderr)

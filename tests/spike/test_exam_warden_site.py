@@ -156,3 +156,18 @@ def test_exam_loader_rejects_bad_rows(tmp_path, bad):
     path.write_text(json.dumps(row) + "\n")
     with pytest.raises(ValueError):
         exam.load_items(path, split="all")
+
+
+def test_dotenv_loader_does_not_override(tmp_path, monkeypatch):
+    from raggeoni.spike.cli import load_dotenv
+
+    env = tmp_path / ".env"
+    env.write_text("# comment\nSPIKE_TEST_A=from_file\nSPIKE_TEST_B='quoted'\nSPIKE_TEST_EMPTY=\n")
+    monkeypatch.setenv("SPIKE_TEST_A", "from_env")
+    monkeypatch.delenv("SPIKE_TEST_B", raising=False)
+    load_dotenv(env)
+    import os
+
+    assert os.environ["SPIKE_TEST_A"] == "from_env"
+    assert os.environ["SPIKE_TEST_B"] == "quoted"
+    assert "SPIKE_TEST_EMPTY" not in os.environ
