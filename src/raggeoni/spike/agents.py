@@ -678,3 +678,21 @@ def report_from_writer(
         features=features,
         run={"brain": brain},
     )
+
+
+def make_brain(name: str) -> Brain:
+    """``rules`` or ``llm``. If the model can't be set up (no key, unknown
+    provider), fall back to rules and say so, rather than crash."""
+    import sys
+
+    from raggeoni.spike.llm import make_chat
+
+    if name == "rules":
+        return HeuristicBrain()
+    try:
+        return LLMBrain(make_chat())
+    except LLMError as exc:
+        print(f"warning: LLM unavailable ({exc}); using the rules brain", file=sys.stderr)
+        brain = HeuristicBrain()
+        brain.fallbacks.append(f"setup: {exc}")
+        return brain

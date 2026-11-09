@@ -28,11 +28,10 @@ from pathlib import Path
 from typing import Any
 
 from raggeoni.spike import demo_data
-from raggeoni.spike.agents import Brain, HeuristicBrain, LLMBrain
+from raggeoni.spike.agents import Brain
 from raggeoni.spike.config import data_dir, exam_dir, fmt_ts, parse_ts
 from raggeoni.spike.detect import SpikeEvent, event_id
 from raggeoni.spike.graph import RunOptions, investigate
-from raggeoni.spike.llm import make_chat
 from raggeoni.spike.schema import ASSESSABLE
 from raggeoni.spike.store import query
 
@@ -136,9 +135,9 @@ def event_for(item: ExamItem, db: Path) -> SpikeEvent:
 
 
 def make_brain(arm: str) -> Brain:
-    if arm == "rules":
-        return HeuristicBrain()
-    return LLMBrain(make_chat())
+    from raggeoni.spike.agents import make_brain as _make
+
+    return _make("rules" if arm == "rules" else "llm")
 
 
 def arm_options(arm: str) -> RunOptions:

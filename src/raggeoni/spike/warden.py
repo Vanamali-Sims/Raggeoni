@@ -47,7 +47,7 @@ from raggeoni.spike.config import (
 from raggeoni.spike.detect import find_spikes
 from raggeoni.spike.evidence import Ledger
 from raggeoni.spike.graph import investigate
-from raggeoni.spike.llm import FailingChat, make_chat
+from raggeoni.spike.llm import FailingChat, has_llm_key, make_chat
 from raggeoni.spike.schema import CauseEntry, Claim, Report
 from raggeoni.spike.store import get_meta, query
 from raggeoni.spike.tools import ToolContext, call_tool
@@ -74,11 +74,7 @@ class Check:
 class Warden:
     def __init__(self, *, use_llm: bool | None = None, live_db: Path | None = None) -> None:
         self.checks: list[Check] = []
-        self.use_llm = (
-            bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
-            if use_llm is None
-            else use_llm
-        )
+        self.use_llm = has_llm_key() if use_llm is None else use_llm
         self.live_db = live_db or live_db_path()
         self.tmp = Path(tempfile.mkdtemp(prefix="warden-"))
         self._synthetic: Path | None = None

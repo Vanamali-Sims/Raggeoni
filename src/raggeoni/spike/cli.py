@@ -32,10 +32,9 @@ from raggeoni.spike.config import (
 
 
 def _brain(name: str):
-    from raggeoni.spike.agents import HeuristicBrain, LLMBrain
-    from raggeoni.spike.llm import make_chat
+    from raggeoni.spike.agents import make_brain
 
-    return HeuristicBrain() if name == "rules" else LLMBrain(make_chat())
+    return make_brain(name)
 
 
 def cmd_demo(args: argparse.Namespace) -> int:
