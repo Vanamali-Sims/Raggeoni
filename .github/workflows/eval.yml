@@ -33,11 +33,9 @@ jobs:
       IN_ARM: ${{ inputs.arm || 'llm' }}
       IN_SPLIT: ${{ inputs.split || 'eval' }}
       OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
-      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
-      SPIKE_PRICE_IN_PER_MTOK: ${{ vars.SPIKE_PRICE_IN_PER_MTOK }}
-      SPIKE_PRICE_OUT_PER_MTOK: ${{ vars.SPIKE_PRICE_OUT_PER_MTOK }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'openrouter' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'anthropic/claude-sonnet-5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -64,7 +62,7 @@ jobs:
 
       - name: LLM team
         id: llm
-        if: env.ANTHROPIC_API_KEY != ''
+        if: env.OPENROUTER_API_KEY != ''
         run: |
           BASE="eval/spikes/baselines/${IN_ARM}-${IN_SPLIT}.json"
           if [ -f "$BASE" ]; then CMP="--compare $BASE"; else CMP=""; fi
@@ -87,7 +85,7 @@ jobs:
             echo
             [ -f llm.md ] && cat llm.md && echo
             [ -f rules.md ] && cat rules.md
-            [ -f llm.md ] || echo "_LLM arm skipped: no ANTHROPIC_API_KEY secret (forks never get secrets)._"
+            [ -f llm.md ] || echo "_LLM arm skipped: no OPENROUTER_API_KEY secret (forks never get secrets)._"
           } > comment.md
           gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md --edit-last \
             || gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md

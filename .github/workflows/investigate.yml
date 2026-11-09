@@ -34,9 +34,9 @@ jobs:
       IN_END: ${{ inputs.end }}
       IN_BRAIN: ${{ inputs.brain }}
       OPENELECTRICITY_API_KEY: ${{ secrets.OPENELECTRICITY_API_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'anthropic' }}
-      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'claude-sonnet-5-5' }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      SPIKE_LLM_PROVIDER: ${{ vars.SPIKE_LLM_PROVIDER || 'openrouter' }}
+      SPIKE_MODEL: ${{ vars.SPIKE_MODEL || 'anthropic/claude-sonnet-5' }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -64,7 +64,7 @@ jobs:
       - name: Investigate
         run: |
           BRAIN="$IN_BRAIN"
-          [ -z "$ANTHROPIC_API_KEY" ] && BRAIN=rules
+          [ -z "$OPENROUTER_API_KEY" ] && BRAIN=rules
           raggeoni-spike investigate --db data/spike/manual.duckdb --region "$IN_REGION" \
             --start "$IN_START" --end "$IN_END" --brain "$BRAIN"
       - name: Commit report
