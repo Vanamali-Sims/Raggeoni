@@ -155,8 +155,8 @@ def verify_report(report: Report, ledger: Ledger, window: tuple[str, str]) -> Ve
             checked += n
             grounded += g
             claims += 1
-    if claims == 0:
-        violations.append(Violation("(report)", "report contains no claims"))
+    if claims == 0 and report.causes:
+        violations.append(Violation("(report)", "report names causes but backs none with claims"))
     for num in quantities(report.headline):
         if not _matches(num, [n for e in ledger.all() if e.status == "ok" for n in e.numbers()]):
             violations.append(

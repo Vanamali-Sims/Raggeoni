@@ -16,3 +16,8 @@ data/raw/
 data/nem.duckdb
 data/nem.duckdb.wal
 data/_canonical.csv
+
+# Spike investigator: generated locally
+data/spike/
+eval/spikes/runs/
+site/
