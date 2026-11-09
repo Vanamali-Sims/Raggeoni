@@ -1,0 +1,35 @@
+{
+  "version": "4.2.4",
+  "created_at": "2026-01-27T00:00:00+10:00",
+  "success": true,
+  "error": null,
+  "data": [
+    {
+      "network_code": "NEM",
+      "metric": "power",
+      "unit": "MW",
+      "interval": "5m",
+      "groupings": ["network_region", "fueltech_group"],
+      "results": [
+        {
+          "name": "power_SA1|wind",
+          "date_start": "2026-01-26T18:25:00+10:00",
+          "date_end": "2026-01-26T18:30:00+10:00",
+          "columns": {"network_region": "SA1", "fueltech_group": "wind"},
+          "data": [["2026-01-26T18:25:00+10:00", 341.2], ["2026-01-26T18:30:00+10:00", 329.8]]
+        },
+        {
+          "name": "power_SA1|battery_charging",
+          "columns": {"network_region": "SA1", "fueltech_group": "battery_charging"},
+          "data": [["2026-01-26T18:30:00+10:00", -12.0], ["2026-01-26T18:35:00+10:00", null]]
+        },
+        {
+          "name": "power_VIC1|wind",
+          "columns": {"network_region": "VIC1", "fueltech_group": "wind"},
+          "data": [["2026-01-26T18:30:00+10:00", 1200.0]]
+        }
+      ]
+    }
+  ],
+  "total_records": 5
+}

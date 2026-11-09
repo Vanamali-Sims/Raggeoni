@@ -1,0 +1,31 @@
+-------------------------------------------------------------------
+                              MARKET NOTICE
+-------------------------------------------------------------------
+
+From :              AEMO
+To   :              NEMITWEB1
+Creation Date :     26/01/2026     20:31:44
+
+-------------------------------------------------------------------
+
+Notice ID               :         131302
+Notice Type ID          :         RESERVE NOTICE
+Notice Type Description :         LRC/LOR1/LOR2/LOR3
+Issue Date              :         26/01/2026
+External Reference      :         Actual Lack Of Reserve Level 1 (LOR1) in the SA region - 26/01/2026
+
+-------------------------------------------------------------------
+
+Reason :
+
+AEMO ELECTRICITY MARKET NOTICE
+
+Actual Lack Of Reserve Level 1 (LOR1) in the SA region - 26/01/2026
+
+An Actual LOR1 condition has been declared under clause 4.8.4(a) of the National Electricity Rules for the SA region from 2030 hrs.
+Heywood interconnector flows are limited by a system normal constraint.
+
+Manager NEM Real Time Operations
+-------------------------------------------------------------------
+END OF REPORT
+-------------------------------------------------------------------
